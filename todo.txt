@@ -1,0 +1,17 @@
+13 Nov, 2025
+-------------
+
+For signup... make sure userNames are unique
+
+### Auth Style? 
+Javascript Web Token (JWT)
+Stratergy : Access + Refresh
+
+Stage: 
+1. Access DONE
+2. Refresh (TODO)
+
+
+14 Nov, 2025
+-------------
+TODO : Add make a common auth library.. and be able to share the auth guards for all other servers / apps
