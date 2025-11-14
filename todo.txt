@@ -15,3 +15,5 @@ Stage:
 14 Nov, 2025
 -------------
 TODO : Add make a common auth library.. and be able to share the auth guards for all other servers / apps
+Setup Typedoc
+npm install typedoc --save-dev
