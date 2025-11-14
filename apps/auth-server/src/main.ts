@@ -5,7 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   
-  const config = new DocumentBuilder().setTitle('AuthServer').setDescription('API Playground for authentication services').addTag('auth').build()
+  const config = new DocumentBuilder().setTitle('AuthServer').setDescription('API Playground for authentication services').addBearerAuth().build()
 
   const app = await NestFactory.create(AuthServerModule);
 
