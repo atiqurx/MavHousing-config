@@ -22,10 +22,7 @@ export class BaseAuthGuard implements CanActivate {
         secret: jwtConstants.secret
         }
     );
-    console.log("PAYLOAD : ", payload)
     request['user'] = payload
-    console.log("request ", request)
-
     /* 
     Since our Payload was
     File : auth-server.service.ts

@@ -14,7 +14,7 @@ async function bootstrap() {
   SwaggerModule.setup("api", app, documentFactory)
   await app.listen(process.env.port ?? 3001);
 
-  console.log(`Server started at ${process.env.HOST ?? '127.0.0.1'}:${process.env.port ?? 3001}/auth`)
+  console.log(`Server started at ${process.env.HOST ?? '127.0.0.1'}:${process.env.port ?? 3001}`)
   console.log(`Swagger started at ${process.env.HOST ?? '127.0.0.1'}:${process.env.port ?? 3001}/api`)
 
 }

@@ -11,6 +11,11 @@ import { Role } from '../DTO/role.enum';
 @Controller("auth")
 export class AuthServerController {
   constructor(private readonly authServerService: AuthServerService) {}
+  
+  @Get()
+  getHealth(){
+    return "Health OK!"
+  }
 
   @Post('create-new')
   @ApiOperation({summary:'Creates new user'})
@@ -123,6 +128,14 @@ export class AuthServerController {
   @RoleRequired(Role.STAFF)
   checkRBACStaff(){
     return this.authServerService.checkRBACStaff()
+  }
+
+  @Get('admin-or-staff')
+  @UseGuards(BaseAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @RoleRequired(Role.ADMIN, Role.STAFF)
+  adminOrStaff(){
+    return { message: 'Allowed for admin or staff' };
   }
 
 }
