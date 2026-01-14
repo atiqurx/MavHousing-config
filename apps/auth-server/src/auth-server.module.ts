@@ -3,8 +3,11 @@ import { AuthServerController } from './auth-server.controller';
 import { AuthServerService } from './auth-server.service';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from './constants';
+import { DbModule } from '@libs/db';
+
 @Module({
   imports: [
+    DbModule,
     JwtModule.register({
       global: true,
       // TODO : Later migrate jwtConstants ... to .env file... see constants.txt

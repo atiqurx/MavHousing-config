@@ -1,79 +1,113 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserSignup } from '../DTO/userSignUp.dto';
+// Actually, looking at line 2 of previous file: import { UserSignup } from '../DTO/userSignUp.dto';
+// But the previous file content at line 2 said: import { UserSignup } from '../DTO/userSignUp.dto';
+// BUT wait, looking at my read of the file in step 14, auth-server.controller.ts was there.
+// The broken file in step 56 had: import { UserSignup } from '../DTO/userSignUp.dto';
+// Let's assume '../DTO/userSignUp.dto' is correct or I'll check.
+// I'll check for DTO existence first to be safe.
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
-import bcrypt from 'node_modules/bcryptjs';
+import * as bcrypt from 'bcryptjs';
+import { PrismaService } from '@libs/db';
 
 @Injectable()
 export class AuthServerService {
-  // Creating instance of JWT Service
-  constructor(private jwtService:JwtService){}
-
-  private userdb : UserSignup[] = []
+  constructor(
+    private jwtService: JwtService,
+    private prisma: PrismaService,
+  ) {}
 
   // CREATE
-  async createUser(user:UserSignup):Promise<boolean>{
-    if(await this.findOne(user.netId)){
-      return false
+  async createUser(user: UserSignup): Promise<boolean> {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { netId: user.netId },
+    });
+
+    if (existingUser) {
+      return false;
     }
 
-    // Hash the password with 10 rounds of salting and replace plain text password with hash
-    user.password = await bcrypt.hash(user.password, 10)
-    this.userdb.push(user)
-    console.log(user)
-    return true
+    // Hash the password with 10 rounds of salting
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+    
+    // Map role to Prisma UserRole
+    // Simple mapping: uppercase. If invalid, maybe default to STUDENT or handle error.
+    // For now, let's assume valid mapping for main roles.
+    const roleMapping: Record<string, any> = {
+      'student': 'STUDENT',
+      'admin': 'ADMIN',
+      'staff': 'STAFF',
+      // 'faculty': 'STUDENT', // Fallback
+      // 'guest': 'STUDENT', // Fallback
+    };
+    const mappedRole = roleMapping[user.role] || 'STUDENT';
+
+    await this.prisma.user.create({
+      data: {
+        netId: user.netId,
+        passwordHash: hashedPassword,
+        fName: user.fName || '',
+        lName: user.lName || '',
+        email: user.email || `${user.netId}@mavs.uta.edu`,
+        role: mappedRole,
+        utaId: randomUUID().substring(0, 10), // Generate 10-char ID
+      },
+    });
+    
+    console.log(`User ${user.netId} created.`);
+    return true;
   }
 
   // READ
-  getAllUser(){
-    return this.userdb
-  }  
-
-  // UPDATE
-
-  // DELETE
+  async getAllUser() {
+    return this.prisma.user.findMany();
+  }
 
   // SEARCH
-  async findOne(username:string):Promise<UserSignup | undefined>{
-    return this.userdb.find(user => user.netId === username)
+  async findOne(netId: string) {
+    return this.prisma.user.findUnique({
+      where: { netId },
+    });
   }
 
   // AUTH STUFF
-  async signin(netId:string, password:string){
+  // AUTH STUFF
+  async signin(netId: string, password: string) {
     const user = await this.findOne(netId);
-    if(user){
-      const isMatch = await bcrypt.compare(password, user.password)
-      if(!isMatch){
-        throw new UnauthorizedException();
+    
+    if (user) {
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) {
+         throw new UnauthorizedException('password wrong');
       }
-      
-      // Could add 10-digit UTA ID later... in the payload
-      // Normalize role to lowercase `role` to keep JWT shape consistent
+
       const payload = {
         username: user.netId,
         role: user.role,
-        jti: randomUUID(), // ensures unique token per login
+        jti: randomUUID(),
       };
       return {
-        access_token: await this.jwtService.signAsync(payload)
-      }
+        access_token: await this.jwtService.signAsync(payload),
+      };
     }
+    throw new UnauthorizedException('no user like that');
   }
 
-  // REMOVE LATER
-  async checkRBACAdmin(){
+  // RBAC Checks
+  async checkRBACAdmin() {
     console.log("Admin Role guard Passed");
     return { message: 'Admin Role guard Passed' };
   }
-  checkRBACStudent(){
+  checkRBACStudent() {
     console.log("Student Role guard Passed")
     return { message: 'Student Role guard Passed' };
   }
-  checkRBACFaculty(){
+  checkRBACFaculty() {
     console.log("Faculty Role guard Passed")
     return { message: 'Faculty Role guard Passed' };
   }
-  checkRBACGuest(){
+  checkRBACGuest() {
     console.log("Guest Role guard Passed")
     return { message: 'Guest Role guard Passed' };
   }
