@@ -107,6 +107,86 @@ export class ApplicationService {
   }
 
   // ═══════════════════════════════════════════
+  // STUDENT: View My Applications
+  // ═══════════════════════════════════════════
+
+  async findMyApplications(netId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { netId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with netId "${netId}" not found`);
+    }
+
+    const applications = await this.prisma.application.findMany({
+      where: { userId: user.userId },
+      include: {
+        preferredProperty: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return applications.map((app) => ({
+      ...app,
+      preferredProperty: app.preferredProperty
+        ? {
+            ...app.preferredProperty,
+            phone: app.preferredProperty.phone !== null
+              ? app.preferredProperty.phone.toString()
+              : null,
+          }
+        : null,
+    }));
+  }
+
+  // ═══════════════════════════════════════════
+  // PREREQUISITE: Housing Availability
+  // ═══════════════════════════════════════════
+
+  async getHousingAvailability() {
+    const properties = await this.prisma.property.findMany({
+      include: {
+        units: {
+          include: {
+            rooms: {
+              include: {
+                beds: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return properties.map((property) => ({
+      propertyId: property.propertyId,
+      name: property.name,
+      address: property.address,
+      propertyType: property.propertyType,
+      leaseType: property.leaseType,
+      phone: property.phone !== null ? property.phone.toString() : null,
+      totalCapacity: property.totalCapacity,
+      totalUnits: property.units.length,
+      units: property.units.map((unit) => ({
+        unitId: unit.unitId,
+        unitNumber: unit.unitNumber,
+        floorLevel: unit.floorLevel,
+        requiresAdaAccess: unit.requiresAdaAccess,
+        maxOccupancy: unit.maxOccupancy,
+        rooms: unit.rooms.map((room) => ({
+          roomId: room.roomId,
+          roomLetter: room.roomLetter,
+          beds: room.beds.map((bed) => ({
+            bedId: bed.bedId,
+            bedLetter: bed.bedLetter,
+          })),
+        })),
+      })),
+    }));
+  }
+
+  // ═══════════════════════════════════════════
   // ADMIN / STAFF: Read & Manage Applications
   // ═══════════════════════════════════════════
 
@@ -198,7 +278,7 @@ export class ApplicationService {
     };
   }
 
-  async approve(appId: number) {
+  async updateStatus(appId: number, status: ApplicationStatus) {
     const application = await this.prisma.application.findUnique({
       where: { appId },
     });
@@ -209,27 +289,10 @@ export class ApplicationService {
 
     const updated = await this.prisma.application.update({
       where: { appId },
-      data: { status: ApplicationStatus.APPROVED },
+      data: { status },
     });
 
-    return { message: `Application ${appId} has been APPROVED`, application: updated };
-  }
-
-  async reject(appId: number) {
-    const application = await this.prisma.application.findUnique({
-      where: { appId },
-    });
-
-    if (!application) {
-      throw new NotFoundException(`Application with ID ${appId} not found`);
-    }
-
-    const updated = await this.prisma.application.update({
-      where: { appId },
-      data: { status: ApplicationStatus.REJECTED },
-    });
-
-    return { message: `Application ${appId} has been REJECTED`, application: updated };
+    return { message: `Application ${appId} status changed to ${status}`, application: updated };
   }
 
   async remove(appId: number) {

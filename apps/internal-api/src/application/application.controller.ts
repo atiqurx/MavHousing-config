@@ -28,15 +28,35 @@ import { BaseAuthGuard } from 'apps/auth-server/src/guards/baseauth.guard';
 import { RolesGuard } from 'apps/auth-server/src/guards/RBAC/roles.guard';
 import { RoleRequired } from 'apps/auth-server/src/guards/RBAC/roles.decorator';
 import { Role } from 'apps/auth-server/DTO/role.enum';
+import { ChangeApplicationStatusDto } from './dto/change-application-status.dto';
 
 @ApiTags('Application Flow')
 @Controller('application')
 export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
 
-  // ═══════════════════════════════════════════════════
-  // STUDENT ENDPOINTS — Submit Applications
-  // ═══════════════════════════════════════════════════
+  @Get('/housing/availability')
+  @UseGuards(BaseAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @RoleRequired(Role.STAFF, Role.ADMIN)
+  @ApiOperation({ summary: 'Get available buildings with units, rooms, and beds (for frontend dropdowns)' })
+  @ApiResponse({ status: 200, description: 'Returns all properties with their leaseType and nested units/rooms/beds' })
+  getHousingAvailability() {
+    return this.applicationService.getHousingAvailability();
+  }
+
+  @Get('my')
+  @UseGuards(BaseAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @RoleRequired(Role.STUDENT)
+  @ApiOperation({ summary: 'View my applications (Student only)' })
+  @ApiResponse({ status: 200, description: 'Returns all applications for the logged-in student' })
+  @ApiResponse({ status: 403, description: 'Insufficient role — must be STUDENT' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  findMyApplications(@Request() req) {
+    return this.applicationService.findMyApplications(req.user.username);
+  }
+
 
   @Post('submit/by-unit')
   @UseGuards(BaseAuthGuard, RolesGuard)
@@ -217,30 +237,21 @@ export class ApplicationController {
     return this.applicationService.findByUtaId(utaId);
   }
 
-  @Patch('approve/:appId')
+  @Patch('update-status/:appId')
   @UseGuards(BaseAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @RoleRequired(Role.ADMIN, Role.STAFF)
-  @ApiOperation({ summary: 'Approve an application (Admin/Staff only)' })
+  @ApiOperation({ summary: 'Change application status (Admin/Staff only)' })
   @ApiParam({ name: 'appId', type: Number, example: 1 })
-  @ApiResponse({ status: 200, description: 'Application approved successfully' })
+  @ApiBody({ type: ChangeApplicationStatusDto })
+  @ApiResponse({ status: 200, description: 'Application status updated successfully' })
   @ApiResponse({ status: 403, description: 'Insufficient role — must be ADMIN or STAFF' })
   @ApiResponse({ status: 404, description: 'Application not found' })
-  approve(@Param('appId', ParseIntPipe) appId: number) {
-    return this.applicationService.approve(appId);
-  }
-
-  @Patch('reject/:appId')
-  @UseGuards(BaseAuthGuard, RolesGuard)
-  @ApiBearerAuth()
-  @RoleRequired(Role.ADMIN, Role.STAFF)
-  @ApiOperation({ summary: 'Reject an application (Admin/Staff only)' })
-  @ApiParam({ name: 'appId', type: Number, example: 1 })
-  @ApiResponse({ status: 200, description: 'Application rejected successfully' })
-  @ApiResponse({ status: 403, description: 'Insufficient role — must be ADMIN or STAFF' })
-  @ApiResponse({ status: 404, description: 'Application not found' })
-  reject(@Param('appId', ParseIntPipe) appId: number) {
-    return this.applicationService.reject(appId);
+  updateStatus(
+    @Param('appId', ParseIntPipe) appId: number,
+    @Body() dto: ChangeApplicationStatusDto,
+  ) {
+    return this.applicationService.updateStatus(appId, dto.status);
   }
 
   @Delete(':appId')
