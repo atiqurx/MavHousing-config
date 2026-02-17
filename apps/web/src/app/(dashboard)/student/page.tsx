@@ -4,56 +4,46 @@
 import { useAuth } from '../../../context/AuthContext';
 
 export default function StudentDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Student Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">Welcome, {user?.username || 'Student'}</span>
-            <button 
-              onClick={logout}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid gap-4 md:grid-cols-3">
+     {/* Welcome Message could be a card or banner if needed, but sidebar has user info now */}
           {/* Apply / Lease Status */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Lease Status</h2>
-            <p className="text-gray-500 italic">No active lease found.</p>
-            <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+          <div className="bg-muted/50 aspect-video rounded-xl p-6 flex flex-col justify-between">
+            <div>
+                 <h2 className="text-xl font-semibold mb-4">Lease Status</h2>
+                <p className="text-muted-foreground italic">No active lease found.</p>
+            </div>
+            <button className="mt-4 w-full bg-primary text-primary-foreground py-2 rounded hover:bg-primary/90">
               Apply for Housing
             </button>
           </div>
 
           {/* Maintenance */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Maintenance Requests</h2>
-            <p className="text-gray-500 italic">No open requests.</p>
-            <button className="mt-4 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
+          <div className="bg-muted/50 aspect-video rounded-xl p-6 flex flex-col justify-between">
+            <div>
+                <h2 className="text-xl font-semibold mb-4">Maintenance Requests</h2>
+                <p className="text-muted-foreground italic">No open requests.</p>
+            </div>
+            <button className="mt-4 w-full bg-primary text-primary-foreground py-2 rounded hover:bg-primary/90">
               New Request
             </button>
           </div>
 
           {/* Payments */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Finances</h2>
-            <div className="flex justify-between items-center mb-2">
-              <span>Balance Due:</span>
-              <span className="font-bold text-red-600">$0.00</span>
+          <div className="bg-muted/50 aspect-video rounded-xl p-6 flex flex-col justify-between">
+            <div>
+                <h2 className="text-xl font-semibold mb-4">Finances</h2>
+                <div className="flex justify-between items-center mb-2">
+                <span>Balance Due:</span>
+                <span className="font-bold text-destructive">$0.00</span>
+                </div>
             </div>
-            <button className="mt-4 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">
+            <button className="mt-4 w-full bg-primary text-primary-foreground py-2 rounded hover:bg-primary/90">
               Make Payment
             </button>
           </div>
-        </div>
-      </div>
     </div>
   );
 }
