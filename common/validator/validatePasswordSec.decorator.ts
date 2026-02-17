@@ -28,9 +28,9 @@ export function ValidatePassword() {
 
           return validatePasswordSec(
             value,
-            user.fname,
-            user.lname,
-            user.mname,
+            user.fName,
+            user.lName,
+            user.mName,
             user.email,
           );
         },

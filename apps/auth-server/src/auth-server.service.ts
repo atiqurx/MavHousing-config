@@ -2,14 +2,39 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserSignup } from '../DTO/userSignUp.dto';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
-import bcrypt from 'node_modules/bcryptjs';
+import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class AuthServerService {
   // Creating instance of JWT Service
-  constructor(private jwtService:JwtService){}
+  constructor(private jwtService:JwtService){
+    this.loadUsers();
+  }
 
   private userdb : UserSignup[] = []
+  private readonly dbPath = path.resolve('apps/auth-server/users.json');
+
+  private loadUsers() {
+    try {
+      if (fs.existsSync(this.dbPath)) {
+        const data = fs.readFileSync(this.dbPath, 'utf8');
+        this.userdb = JSON.parse(data);
+        console.log(`Loaded ${this.userdb.length} users from ${this.dbPath}`);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  }
+
+  private saveUsers() {
+    try {
+      fs.writeFileSync(this.dbPath, JSON.stringify(this.userdb, null, 2));
+    } catch (error) {
+      console.error('Error saving users:', error);
+    }
+  }
 
   // CREATE
   async createUser(user:UserSignup):Promise<boolean>{
@@ -18,9 +43,11 @@ export class AuthServerService {
     }
 
     // Hash the password with 10 rounds of salting and replace plain text password with hash
-    user.password = await bcrypt.hash(user.password, 10)
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt)
     this.userdb.push(user)
-    console.log(user)
+    this.saveUsers();
+    console.log(`User created: ${user.netId}`)
     return true
   }
 
@@ -42,9 +69,11 @@ export class AuthServerService {
   async signin(netId:string, password:string){
     const user = await this.findOne(netId);
     if(user){
+      console.log(`Signin attempt for ${netId}. Stored hash: ${user.password}`);
       const isMatch = await bcrypt.compare(password, user.password)
       if(!isMatch){
-        throw new UnauthorizedException();
+        console.log("Password mismatch");
+        throw new UnauthorizedException('Invalid NetID or Password');
       }
       
       // Could add 10-digit UTA ID later... in the payload
@@ -57,6 +86,9 @@ export class AuthServerService {
       return {
         access_token: await this.jwtService.signAsync(payload)
       }
+    } else {
+      console.log(`Signin failed: User ${netId} not found`);
+      throw new UnauthorizedException('Invalid NetID or Password');
     }
   }
 

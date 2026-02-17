@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/mav-housing-config/src",
+  "sourceRoot": "apps/auth-server/src",
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/mav-housing-config/tsconfig.app.json"
+    "tsConfigPath": "apps/auth-server/tsconfig.app.json"
   },
   "monorepo": true,
-  "root": "apps/mav-housing-config",
+  "root": "apps/auth-server",
   "projects": {
     "auth-server": {
       "type": "application",
@@ -35,15 +35,6 @@
       "sourceRoot": "apps/internal-api/src",
       "compilerOptions": {
         "tsConfigPath": "apps/internal-api/tsconfig.app.json"
-      }
-    },
-    "mav-housing-config": {
-      "type": "application",
-      "root": "apps/mav-housing-config",
-      "entryFile": "main",
-      "sourceRoot": "apps/mav-housing-config/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/mav-housing-config/tsconfig.app.json"
       }
     },
     "public-api": {
