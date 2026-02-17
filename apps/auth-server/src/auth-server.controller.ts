@@ -1,60 +1,117 @@
-import { Body, Query, Controller, Get, Patch, Post, HttpCode, HttpStatus, UseGuards, Request} from '@nestjs/common';
+import {
+  Body,
+  Query,
+  Controller,
+  Get,
+  Post,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Request,
+  ForbiddenException,
+  NotFoundException,
+  Delete,
+  Param,
+} from '@nestjs/common';
 import { AuthServerService } from './auth-server.service';
 import { UserSignup } from '../DTO/userSignUp.dto';
-import { ApiTags, ApiQuery, ApiOperation, ApiResponse, ApiBody, ApiHeader, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiQuery,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UserSignIn } from '../DTO/signin.dto';
 import { BaseAuthGuard } from './guards/baseauth.guard';
 import { RolesGuard } from './guards/RBAC/roles.guard';
 import { RoleRequired } from './guards/RBAC/roles.decorator';
 import { Role } from '../DTO/role.enum';
+import { Gender, StaffPosition, StudentStatus } from 'generated/prisma';
 
-@Controller("auth")
+@Controller('auth')
 export class AuthServerController {
   constructor(private readonly authServerService: AuthServerService) {}
-  
+
   @Get()
-  getHealth(){
-    return "Health OK!"
+  getHealth() {
+    return 'Health OK!';
   }
-  
+
+  // we can extend this create new based on different type of create-new.... like create new with certain fields only
+
+  /*
+  The function creates accounts
+  It also used RBAC to determine necessary persmission requirements
+    - Admins can create both Staff and Student accounts.
+    - Staff can only create Student accounts.
+    - Throws ForbiddenException if a non-admin attempts to create a staff account.
+  */
+
   @Post('create-new')
-  @ApiOperation({summary:'Creates new user'})
+  @UseGuards(BaseAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Creates new account' })
   @ApiBody({
     type: UserSignup,
     examples: {
       default: {
         value: {
-          email: 'john@example.com',
-          fName: 'AALOK',
-          lName: 'JHA',
-          netId:'aalokvault',
-          password: 'P@ssw0rd123',
-          role: 'guest'
+          netId: 'iaalok03',
+          passwordHash: 'P@ssw0rd123',
+          role: Role.STAFF,
+          email: 'iaalok0303@uta.edu',
+          fName: 'Aalok',
+          mName: null,
+          lName: 'Jha',
+          gender: Gender.MALE,
+          dob: '1999-01-01',
+          utaId: '123456789',
+          studentStatus: StudentStatus.RESIDENT,
+          staffPosition: StaffPosition.MANAGEMENT,
+          requiresAdaAccess: true,
         },
       },
     },
   })
-  async createUser(@Body() user:UserSignup){
-    const result = await this.authServerService.createUser(user)
-    if(result){
-      console.log(`user ${user.netId} was created`)
-      return 'created'
+  @RoleRequired(Role.ADMIN, Role.STAFF)
+  async createNewUser(@Body() userData: UserSignup, @Request() req) {
+    const loggedInUserRole = req.user.role;
+
+    switch (userData.role) {
+      case Role.STUDENT:
+        return this.authServerService.createUser(userData);
+
+      case Role.STAFF:
+        if (loggedInUserRole !== Role.ADMIN) {
+          throw new ForbiddenException('Only admins can create staff accounts');
+        }
+        return this.authServerService.createUser(userData);
+
+      default:
+        return { message: 'Invalid role' };
     }
-    console.log(`user ${user.netId} already exists`)
-    return 'not created'
-    
+  }
+
+  @Delete('delete-user')
+  @UseGuards(BaseAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletes a user' })
+  @ApiQuery({ name: 'utaId' })
+  @RoleRequired(Role.ADMIN, Role.STAFF)
+  async deleteUser(@Query('utaId') utaId: string, @Request() req) {
+    return this.authServerService.deleteUser(utaId);
   }
 
   @Get('get-all')
-  getAllUser(){
-    return this.authServerService.getAllUser()
+  getAllUser() {
+    return this.authServerService.getAllUser();
   }
 
-
   @Get('find-user')
-  @ApiOperation({summary:"Searches if a user is there or not"})
+  @ApiOperation({ summary: 'Searches if a user is there or not' })
   @ApiQuery({ name: 'netId', required: true, type: String })
-  findOne(@Query('netId') netId: string){
+  findOne(@Query('netId') netId: string) {
     return this.authServerService.findOne(netId);
   }
 
@@ -65,14 +122,14 @@ export class AuthServerController {
     examples: {
       default: {
         value: {
-          netId:'axjh03',
+          netId: 'axjh03',
           password: 'P@ssw0rd123',
         },
       },
     },
   })
-  signIn(@Body() userData:UserSignIn){
-    return this.authServerService.signin(userData.netId, userData.password)
+  signIn(@Body() userData: UserSignIn) {
+    return this.authServerService.signin(userData.netId, userData.password);
   }
 
   // Test BaseAuthGuard
@@ -80,7 +137,10 @@ export class AuthServerController {
   @Get('test-baseauth')
   @ApiOperation({ summary: 'Test BaseAuthGuard - returns the JWT payload' })
   @ApiBearerAuth()
-  @ApiResponse({ status: 200, description: 'Returns the logged-in user payload' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the logged-in user payload',
+  })
   testBaseAuth(@Request() req) {
     return req.user;
   }
@@ -89,48 +149,31 @@ export class AuthServerController {
   @UseGuards(BaseAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @RoleRequired(Role.ADMIN)
-  checkRBACAdmin(){
-    return this.authServerService.checkRBACAdmin()
+  checkRBACAdmin() {
+    return this.authServerService.checkRBACAdmin();
   }
 
   @Get('checkRBACStudent')
   @UseGuards(BaseAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @RoleRequired(Role.STUDENT)
-  checkRBACStudent(){
-    return this.authServerService.checkRBACStudent()
-  }
-
-  @Get('checkRBACFaculty')
-  @UseGuards(BaseAuthGuard, RolesGuard)
-  @ApiBearerAuth()
-  @RoleRequired(Role.FACULTY)
-  checkRBACFaculty(){
-    return this.authServerService.checkRBACFaculty()
-  }
-
-  @Get('checkRBACGuest')
-  @UseGuards(BaseAuthGuard, RolesGuard)
-  @ApiBearerAuth()
-  @RoleRequired(Role.GUEST)
-  checkRBACGuest(){
-    return this.authServerService.checkRBACGuest()
+  checkRBACStudent() {
+    return this.authServerService.checkRBACStudent();
   }
 
   @Get('checkRBACStaff')
   @UseGuards(BaseAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @RoleRequired(Role.STAFF)
-  checkRBACStaff(){
-    return this.authServerService.checkRBACStaff()
+  checkRBACStaff() {
+    return this.authServerService.checkRBACStaff();
   }
 
   @Get('admin-or-staff')
   @UseGuards(BaseAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @RoleRequired(Role.ADMIN, Role.STAFF)
-  adminOrStaff(){
+  adminOrStaff() {
     return { message: 'Allowed for admin or staff' };
   }
-
 }

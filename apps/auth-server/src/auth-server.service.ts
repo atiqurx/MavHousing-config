@@ -29,15 +29,15 @@ export class AuthServerService {
     }
 
     // Hash the password with 10 rounds of salting
-    const hashedPassword = await bcrypt.hash(user.password, 10);
-    
+    const hashedPassword = await bcrypt.hash(user.passwordHash, 10);
+
     // Map role to Prisma UserRole
     // Simple mapping: uppercase. If invalid, maybe default to STUDENT or handle error.
     // For now, let's assume valid mapping for main roles.
     const roleMapping: Record<string, any> = {
-      'student': 'STUDENT',
-      'admin': 'ADMIN',
-      'staff': 'STAFF',
+      student: 'STUDENT',
+      admin: 'ADMIN',
+      staff: 'STAFF',
       // 'faculty': 'STUDENT', // Fallback
       // 'guest': 'STUDENT', // Fallback
     };
@@ -46,16 +46,46 @@ export class AuthServerService {
     await this.prisma.user.create({
       data: {
         netId: user.netId,
+        utaId: user.utaId,
         passwordHash: hashedPassword,
         fName: user.fName || '',
+        mName: user.mName || null,
         lName: user.lName || '',
         email: user.email || `${user.netId}@mavs.uta.edu`,
         role: mappedRole,
-        utaId: randomUUID().substring(0, 10), // Generate 10-char ID
+        gender: user.gender,
+        dob: user.dob,
+        studentStatus: user.studentStatus || null,
+        staffPosition: user.staffPosition || null,
+        requiresAdaAccess: user.requiresAdaAccess ?? false,
       },
     });
-    
+
     console.log(`User ${user.netId} created.`);
+    return true;
+  }
+
+  // DELETE
+  /*
+  The function lets user with role staff and admin to delete user
+  staff can delete student
+  admin can delete student and staff
+  and search by utaID
+  */
+  async deleteUser(utaID: string) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { utaId: utaID },
+    });
+
+    if (!existingUser) {
+      return false;
+    }
+
+    await this.prisma.user.delete({
+      where: { utaId: utaID },
+    });
+
+    console.log(`UTAID ${utaID} deleted.`);
     return true;
   }
 
@@ -75,11 +105,11 @@ export class AuthServerService {
   // AUTH STUFF
   async signin(netId: string, password: string) {
     const user = await this.findOne(netId);
-    
+
     if (user) {
       const isMatch = await bcrypt.compare(password, user.passwordHash);
       if (!isMatch) {
-         throw new UnauthorizedException('password wrong');
+        throw new UnauthorizedException('password wrong');
       }
 
       const payload = {
@@ -96,23 +126,23 @@ export class AuthServerService {
 
   // RBAC Checks
   async checkRBACAdmin() {
-    console.log("Admin Role guard Passed");
+    console.log('Admin Role guard Passed');
     return { message: 'Admin Role guard Passed' };
   }
   checkRBACStudent() {
-    console.log("Student Role guard Passed")
+    console.log('Student Role guard Passed');
     return { message: 'Student Role guard Passed' };
   }
   checkRBACFaculty() {
-    console.log("Faculty Role guard Passed")
+    console.log('Faculty Role guard Passed');
     return { message: 'Faculty Role guard Passed' };
   }
   checkRBACGuest() {
-    console.log("Guest Role guard Passed")
+    console.log('Guest Role guard Passed');
     return { message: 'Guest Role guard Passed' };
   }
-  checkRBACStaff(){
-    console.log("Staff Role guard passed")
+  checkRBACStaff() {
+    console.log('Staff Role guard passed');
     return { message: 'Staff Role guard passed' };
   }
 }
