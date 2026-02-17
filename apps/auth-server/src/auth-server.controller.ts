@@ -1,6 +1,7 @@
 import { Body, Query, Controller, Get, Delete, Patch, Param, Post, HttpCode, HttpStatus, UseGuards, Request} from '@nestjs/common';
 import { AuthServerService } from './auth-server.service';
 import { UserSignup } from '../DTO/userSignUp.dto';
+import { UpdateUserDto } from '../DTO/updateUser.dto';
 import { ApiTags, ApiQuery, ApiOperation, ApiResponse, ApiBody, ApiHeader, ApiBearerAuth } from '@nestjs/swagger';
 import { UserSignIn } from '../DTO/signin.dto';
 import { BaseAuthGuard } from './guards/baseauth.guard';
@@ -54,6 +55,20 @@ export class AuthServerController {
     const users = this.authServerService.getAllUser();
     // Return users without password hash
     return users.map(({ password, ...user }) => user);
+  }
+
+  @Patch('users/:netId')
+  @UseGuards(BaseAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @RoleRequired(Role.ADMIN)
+  @ApiOperation({ summary: 'Update user by NetID (Admin only)' })
+  @ApiBody({ type: UpdateUserDto })
+  updateUser(@Param('netId') netId: string, @Body() updates: UpdateUserDto) {
+    const updated = this.authServerService.updateUser(netId, updates);
+    if (updated) {
+      return { message: `User ${netId} updated successfully` };
+    }
+    return { message: `User ${netId} not found` };
   }
 
   @Delete('users/:netId')

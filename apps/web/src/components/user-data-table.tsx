@@ -104,19 +104,9 @@ import {
 } from "@/components/ui/tabs"
 import { authApi } from "@/lib/api"
 import { User } from "@/context/AuthContext"
+import { EditUserSheet } from "@/components/edit-user-sheet"
 
-// Extend User interface for local table usage if needed, or use directly
-const userSchema = z.object({
-  netId: z.string(),
-  fName: z.string(),
-  lName: z.string(),
-  email: z.string(),
-  role: z.string(),
-  // Add an ID for dnd-kit if not present in user object, though netId is unique
-  id: z.string().optional(), 
-})
-
-type UserData = z.infer<typeof userSchema>
+import { userSchema, type UserData } from "@/lib/types"
 
 // Create a separate component for the drag handle
 function DragHandle({ id }: { id: string }) {
@@ -138,105 +128,7 @@ function DragHandle({ id }: { id: string }) {
   )
 }
 
-const columns: ColumnDef<UserData>[] = [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.netId} />,
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "netId",
-    header: "NetID",
-    cell: ({ row }) => <div className="font-medium">{row.getValue("netId")}</div>,
-  },
-  {
-    accessorKey: "name",
-    header: "Name",
-    accessorFn: (row) => `${row.fName} ${row.lName}`,
-    cell: ({ row }) => {
-      // Pass the *entire* row object to the viewer
-      return <TableCellViewer item={row.original} />
-    },
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-  },
-  {
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-        const role = row.getValue("role") as string;
-        return (
-            <Badge variant={role === 'admin' ? 'destructive' : role === 'staff' ? 'default' : 'secondary'}>
-                {role}
-            </Badge>
-        )
-    },
-    enableSorting: true,
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
-            <IconDotsVertical className="size-4" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem onClick={() => toast("Edit functionality not implemented yet")}>Edit Details</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            variant="destructive"
-            onClick={() => {
-                // We'll need a way to bubble this up or handle it here. 
-                // For now just toast, as the main delete logic is in the parent page.
-                // ideally we pass a onDelete prop to the table.
-                toast.error("Please use determining delete action from parent or implement delete callback")
-            }}
-          >
-            Delete User
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-]
-
+// Helper component for draggable rows
 function DraggableRow({ row }: { row: Row<UserData> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.netId,
@@ -262,15 +154,10 @@ function DraggableRow({ row }: { row: Row<UserData> }) {
   )
 }
 
-interface UserDataTableProps {
-    data: UserData[];
-    onDelete?: (netId: string) => void;
-}
-
 export function UserDataTable({
   data: initialData,
-  onDelete
-}: UserDataTableProps) {
+  onUserUpdated
+}: { data: UserData[], onUserUpdated?: () => void }) {
   const [data, setData] = React.useState<UserData[]>(initialData)
   
   // Update local state if props change
@@ -289,6 +176,121 @@ export function UserDataTable({
     pageIndex: 0,
     pageSize: 10,
   })
+
+  // Edit Sheet State
+  const [editingUser, setEditingUser] = React.useState<UserData | null>(null)
+  const [isEditOpen, setIsEditOpen] = React.useState(false)
+
+  const handleDelete = async (netId: string) => {
+    if (confirm(`Are you sure you want to delete user ${netId}?`)) {
+        try {
+            await authApi.delete(`/auth/users/${netId}`)
+            toast.success(`User ${netId} deleted`)
+            if (onUserUpdated) onUserUpdated()
+        } catch (error) {
+            console.error("Failed to delete user", error)
+            toast.error("Failed to delete user")
+        }
+    }
+  }
+
+  const columns = React.useMemo<ColumnDef<UserData>[]>(() => [
+    {
+        id: "drag",
+        header: () => null,
+        cell: ({ row }) => <DragHandle id={row.original.netId} />,
+        enableSorting: false,
+        enableHiding: false,
+    },
+    {
+        id: "select",
+        header: ({ table }) => (
+        <div className="flex items-center justify-center">
+            <Checkbox
+            checked={
+                table.getIsAllPageRowsSelected() ||
+                (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+            />
+        </div>
+        ),
+        cell: ({ row }) => (
+        <div className="flex items-center justify-center">
+            <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+            />
+        </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+    },
+    {
+        accessorKey: "netId",
+        header: "NetID",
+        cell: ({ row }) => <div className="font-medium">{row.getValue("netId")}</div>,
+    },
+    {
+        accessorKey: "name",
+        header: "Name",
+        accessorFn: (row) => `${row.fName} ${row.lName}`,
+        cell: ({ row }) => {
+        return <TableCellViewer item={row.original} />
+        },
+    },
+    {
+        accessorKey: "email",
+        header: "Email",
+    },
+    {
+        accessorKey: "role",
+        header: "Role",
+        cell: ({ row }) => {
+            const role = row.getValue("role") as string;
+            return (
+                <Badge variant={role === 'admin' ? 'destructive' : role === 'staff' ? 'default' : 'secondary'}>
+                    {role}
+                </Badge>
+            )
+        },
+        enableSorting: true,
+    },
+    {
+        id: "actions",
+        cell: ({ row }) => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+            <Button
+                variant="ghost"
+                className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+                size="icon"
+            >
+                <IconDotsVertical className="size-4" />
+                <span className="sr-only">Open menu</span>
+            </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem onClick={() => {
+                setEditingUser(row.original)
+                setIsEditOpen(true)
+            }}>
+                Edit Details
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+                variant="destructive"
+                onClick={() => handleDelete(row.original.netId)}
+            >
+                Delete User
+            </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+        ),
+    },
+  ], [])
   
   // We need a stable ID for the DnD context
   const sortableId = React.useId()
@@ -306,7 +308,7 @@ export function UserDataTable({
 
   const table = useReactTable({
     data,
-    columns,
+    columns, // Uses memoized columns with closure over handlers
     state: {
       sorting,
       columnVisibility,
@@ -409,7 +411,7 @@ export function UserDataTable({
                             : flexRender(
                                 header.column.columnDef.header,
                                 header.getContext()
-                              )}
+                                )}
                         </TableHead>
                       )
                     })}
@@ -465,6 +467,15 @@ export function UserDataTable({
             </Button>
           </div>
         </div>
+        
+        <EditUserSheet 
+            open={isEditOpen} 
+            onOpenChange={setIsEditOpen} 
+            user={editingUser} 
+            onUserUpdated={() => {
+                if (onUserUpdated) onUserUpdated()
+            }}
+        />
     </div>
   )
 }

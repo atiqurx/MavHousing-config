@@ -49,7 +49,7 @@ export default function UserManagementPage() {
       </div>
 
       <div className="border rounded-lg overflow-hidden bg-background">
-         <UserDataTable data={users} />
+         <UserDataTable data={users} onUserUpdated={fetchUsers} />
       </div>
       
       <div className="text-sm text-muted-foreground mt-4">

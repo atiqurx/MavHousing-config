@@ -16,14 +16,6 @@
     "role": "staff"
   },
   {
-    "fName": "atiq",
-    "lName": "rah",
-    "email": "netid123@mavs.uta.edu",
-    "netId": "netid123",
-    "password": "$2b$10$TU2SgBvCHkFNmXtCAxwQFeHI2z/UgYS0/tt9klyvuQBZQyeA/nk9W",
-    "role": "student"
-  },
-  {
     "fName": "admin",
     "lName": "one",
     "email": "adminone@uta.edu",

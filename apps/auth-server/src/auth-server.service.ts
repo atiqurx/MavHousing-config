@@ -57,6 +57,18 @@ export class AuthServerService {
   }  
 
   // UPDATE
+  updateUser(netId: string, updates: any): boolean {
+    const userIndex = this.userdb.findIndex(u => u.netId === netId);
+    if (userIndex === -1) return false;
+
+    // Merge updates
+    const currentUser = this.userdb[userIndex];
+    this.userdb[userIndex] = { ...currentUser, ...updates };
+    
+    this.saveUsers();
+    console.log(`User updated: ${netId}`);
+    return true;
+  }
 
   // DELETE
   remove(netId: string): boolean {
