@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Wrench } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Wrench, MapPin, User, Calendar, AlertTriangle } from "lucide-react";
 
 interface MaintenanceRequest {
   requestId: number;
@@ -25,25 +27,20 @@ interface StaffMember { userId: number; fName: string; lName: string; netId: str
 const STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  OPEN: "secondary",
-  IN_PROGRESS: "default",
-  RESOLVED: "outline",
-  CLOSED: "outline",
+  OPEN: "secondary", IN_PROGRESS: "default", RESOLVED: "outline", CLOSED: "outline",
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "bg-green-100 text-green-800",
-  MEDIUM: "bg-yellow-100 text-yellow-800",
-  HIGH: "bg-orange-100 text-orange-800",
-  EMERGENCY: "bg-red-100 text-red-800",
+  LOW: "bg-green-100 text-green-800 border-green-200",
+  MEDIUM: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  HIGH: "bg-orange-100 text-orange-800 border-orange-200",
+  EMERGENCY: "bg-red-100 text-red-800 border-red-200",
 };
 
-
-
-function formatDate(d: string) {
+function fmtDate(d?: string) {
+  if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
-
 function getLocation(r: MaintenanceRequest) {
   if (!r.lease?.unit) return "—";
   return `${r.lease.unit.property.name} / Unit ${r.lease.unit.unitNumber}${r.lease.room ? ` / Rm ${r.lease.room.roomLetter}` : ""}`;
@@ -54,20 +51,20 @@ export default function StaffMaintenancePage() {
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<number | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  const [filterPriority, setFilterPriority] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterPriority, setFilterPriority] = useState("ALL");
+  const [selected, setSelected] = useState<MaintenanceRequest | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {
     const [reqRes, staffRes] = await Promise.all([
-      fetch("http://localhost:3009/maintenance/requests"),
-      fetch("http://localhost:3009/maintenance/staff"),
+      fetch("http://localhost:3009/maintenance/requests").then(r => r.json()).catch(() => []),
+      fetch("http://localhost:3009/maintenance/staff").then(r => r.json()).catch(() => []),
     ]);
-    setRequests(await reqRes.json());
-    setStaffList(await staffRes.json());
+    setRequests(Array.isArray(reqRes) ? reqRes : []);
+    setStaffList(Array.isArray(staffRes) ? staffRes : []);
     setLoading(false);
   }
 
@@ -75,22 +72,19 @@ export default function StaffMaintenancePage() {
     setUpdating(requestId);
     try {
       await fetch(`http://localhost:3009/maintenance/requests/${requestId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
       setRequests(prev => prev.map(r => r.requestId === requestId ? { ...r, status } : r));
-    } finally {
-      setUpdating(null);
-    }
+      if (selected?.requestId === requestId) setSelected(prev => prev ? { ...prev, status } : null);
+    } finally { setUpdating(null); }
   }
 
   async function handleAssignStaff(requestId: number, staffId: number) {
     setUpdating(requestId);
     try {
       await fetch(`http://localhost:3009/maintenance/requests/${requestId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "IN_PROGRESS", staffId }),
       });
       const assigned = staffList.find(s => s.userId === staffId);
@@ -99,73 +93,67 @@ export default function StaffMaintenancePage() {
           ? { ...r, status: "IN_PROGRESS", assignedStaff: assigned ? { userId: assigned.userId, fName: assigned.fName, lName: assigned.lName } : r.assignedStaff }
           : r
       ));
-    } finally {
-      setUpdating(null);
-    }
+      if (selected?.requestId === requestId && assigned) {
+        setSelected(prev => prev ? { ...prev, status: "IN_PROGRESS", assignedStaff: { userId: assigned.userId, fName: assigned.fName, lName: assigned.lName } } : null);
+      }
+    } finally { setUpdating(null); }
   }
+
+  function open(r: MaintenanceRequest) { setSelected(r); setSheetOpen(true); }
 
   const filtered = requests.filter(r =>
     (filterStatus === "ALL" || r.status === filterStatus) &&
     (filterPriority === "ALL" || r.priority === filterPriority)
   );
 
-  const summaryStats = {
+  const stats = {
     open: requests.filter(r => r.status === "OPEN").length,
     inProgress: requests.filter(r => r.status === "IN_PROGRESS").length,
     resolved: requests.filter(r => r.status === "RESOLVED").length,
-    emergency: requests.filter(r => r.priority === "EMERGENCY" && r.status !== "RESOLVED" && r.status !== "CLOSED").length,
+    emergency: requests.filter(r => r.priority === "EMERGENCY" && !["RESOLVED", "CLOSED"].includes(r.status)).length,
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex flex-1 flex-col gap-6 p-6">
       <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Wrench className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Maintenance Requests</h1>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">Maintenance Requests</h1>
         <p className="text-muted-foreground">Review and manage all incoming maintenance requests</p>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "Open", value: summaryStats.open, color: "text-blue-600" },
-          { label: "In Progress", value: summaryStats.inProgress, color: "text-yellow-600" },
-          { label: "Resolved", value: summaryStats.resolved, color: "text-green-600" },
-          { label: "🚨 Emergency", value: summaryStats.emergency, color: "text-red-600" },
-        ].map(stat => (
-          <Card key={stat.label} className="text-center">
+          { label: "Open", value: stats.open, color: "text-blue-600" },
+          { label: "In Progress", value: stats.inProgress, color: "text-yellow-600" },
+          { label: "Resolved", value: stats.resolved, color: "text-green-600" },
+          { label: "Emergency", value: stats.emergency, color: "text-red-600" },
+        ].map(s => (
+          <Card key={s.label} className="text-center">
             <CardContent className="pt-4 pb-4">
-              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-              <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+              <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-sm text-muted-foreground mt-1">{s.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue placeholder="All Statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Statuses</SelectItem>
             {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterPriority} onValueChange={setFilterPriority}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter by priority" />
-          </SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue placeholder="All Priorities" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Priorities</SelectItem>
-            {["LOW", "MEDIUM", "HIGH", "EMERGENCY"].map(p => (
-              <SelectItem key={p} value={p}>{p}</SelectItem>
-            ))}
+            {["LOW", "MEDIUM", "HIGH", "EMERGENCY"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
-        <p className="self-center text-sm text-muted-foreground">{filtered.length} request{filtered.length !== 1 ? "s" : ""}</p>
+        <p className="text-sm text-muted-foreground">{filtered.length} request{filtered.length !== 1 ? "s" : ""}</p>
       </div>
 
       {/* Table */}
@@ -179,78 +167,36 @@ export default function StaffMaintenancePage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tenant</TableHead>
+                  <TableHead className="pl-6">Tenant</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>Location</TableHead>
                   <TableHead>Priority</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Assigned To</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="pr-6 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(req => (
-                  <TableRow key={req.requestId}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{req.createdBy.fName} {req.createdBy.lName}</p>
-                        <p className="text-xs text-muted-foreground">{req.createdBy.netId}</p>
-                      </div>
+                  <TableRow key={req.requestId} className="cursor-pointer hover:bg-muted/50" onClick={() => open(req)}>
+                    <TableCell className="pl-6">
+                      <p className="font-medium">{req.createdBy.fName} {req.createdBy.lName}</p>
+                      <p className="text-xs text-muted-foreground">{req.createdBy.netId}</p>
                     </TableCell>
                     <TableCell className="text-sm">{req.category}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[160px]">
-                      {getLocation(req)}
-                    </TableCell>
                     <TableCell>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PRIORITY_COLORS[req.priority]}`}>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[req.priority]}`}>
                         {req.priority}
                       </span>
                     </TableCell>
-                    <TableCell className="max-w-[200px]">
-                      <p className="text-sm truncate" title={req.description}>{req.description}</p>
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{fmtDate(req.createdAt)}</TableCell>
                     <TableCell>
-                      <Select
-                        value={req.assignedStaff ? String(req.assignedStaff.userId) : "none"}
-                        onValueChange={val => val !== "none" && handleAssignStaff(req.requestId, parseInt(val))}
-                        disabled={updating === req.requestId}
-                      >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue placeholder="Assign staff..." />
-                        </SelectTrigger>
+                      <Badge variant={STATUS_VARIANTS[req.status] ?? "secondary"}>{req.status.replace("_", " ")}</Badge>
+                    </TableCell>
+                    <TableCell className="pr-6 text-right" onClick={e => e.stopPropagation()}>
+                      <Select value={req.status} onValueChange={val => handleStatusChange(req.requestId, val)} disabled={updating === req.requestId}>
+                        <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none" className="text-xs text-muted-foreground">Unassigned</SelectItem>
-                          {staffList.map(s => (
-                            <SelectItem key={s.userId} value={String(s.userId)} className="text-xs">
-                              {s.fName} {s.lName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(req.createdAt)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANTS[req.status] ?? "secondary"}>
-                        {req.status.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={req.status}
-                        onValueChange={val => handleStatusChange(req.requestId, val)}
-                        disabled={updating === req.requestId}
-                      >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map(s => (
-                            <SelectItem key={s} value={s} className="text-xs">{s.replace("_", " ")}</SelectItem>
-                          ))}
+                          {STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{s.replace("_", " ")}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -261,6 +207,106 @@ export default function StaffMaintenancePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader className="pb-4 px-6">
+                <SheetTitle>Request #{selected.requestId}</SheetTitle>
+                <SheetDescription>{selected.category} · {fmtDate(selected.createdAt)}</SheetDescription>
+              </SheetHeader>
+
+              <div className="px-6 mb-6 flex items-center gap-2">
+                <Badge variant={STATUS_VARIANTS[selected.status] ?? "secondary"} className="text-sm px-3 py-1">
+                  {selected.status.replace("_", " ")}
+                </Badge>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${PRIORITY_COLORS[selected.priority]}`}>
+                  {selected.priority}
+                </span>
+              </div>
+
+              <div className="space-y-6 px-6">
+                {/* Submitter */}
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Submitted By</h3>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{selected.createdBy.fName} {selected.createdBy.lName}</span></div>
+                    <div className="flex items-center gap-2"><span className="h-4 w-4" /><span className="text-sm text-muted-foreground">{selected.createdBy.netId}</span></div>
+                    <div className="flex items-center gap-2"><span className="h-4 w-4" /><span className="text-sm text-muted-foreground">{selected.createdBy.email}</span></div>
+                  </div>
+                </div>
+                <Separator />
+
+                {/* Location */}
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Location</h3>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{getLocation(selected)}</span>
+                  </div>
+                </div>
+                <Separator />
+
+                {/* Description */}
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Description</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{selected.description}</p>
+                </div>
+                <Separator />
+
+                {/* Assign staff */}
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Assigned To</h3>
+                  {selected.assignedStaff ? (
+                    <p className="text-sm font-medium mb-2">{selected.assignedStaff.fName} {selected.assignedStaff.lName}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mb-2">Not yet assigned</p>
+                  )}
+                  <Select
+                    value={selected.assignedStaff ? String(selected.assignedStaff.userId) : "none"}
+                    onValueChange={val => val !== "none" && handleAssignStaff(selected.requestId, parseInt(val))}
+                    disabled={updating === selected.requestId}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Assign staff..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {staffList.map(s => <SelectItem key={s.userId} value={String(s.userId)}>{s.fName} {s.lName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Separator />
+
+                {/* Status */}
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Update Status</h3>
+                  <Select
+                    value={selected.status}
+                    onValueChange={val => handleStatusChange(selected.requestId, val)}
+                    disabled={updating === selected.requestId}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selected.resolvedAt && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm font-medium">Resolved {fmtDate(selected.resolvedAt)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
