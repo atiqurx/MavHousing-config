@@ -38,10 +38,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   EMERGENCY: "bg-red-100 text-red-800",
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  PLUMBING: "🔧", HVAC: "❄️", ELECTRICAL: "⚡",
-  INTERNET: "🌐", APPLIANCE: "🍳", STRUCTURAL: "🏗️", OTHER: "📋",
-};
+
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -202,11 +199,7 @@ export default function StaffMaintenancePage() {
                         <p className="text-xs text-muted-foreground">{req.createdBy.netId}</p>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1.5 text-sm">
-                        {CATEGORY_ICONS[req.category]} {req.category}
-                      </span>
-                    </TableCell>
+                    <TableCell className="text-sm">{req.category}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[160px]">
                       {getLocation(req)}
                     </TableCell>

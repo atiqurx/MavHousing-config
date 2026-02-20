@@ -11,13 +11,13 @@ import { CheckCircle, AlertTriangle, Wrench, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 const CATEGORIES = [
-  { value: "PLUMBING", label: "🔧 Plumbing" },
-  { value: "HVAC", label: "❄️ HVAC / Heating & Cooling" },
-  { value: "ELECTRICAL", label: "⚡ Electrical" },
-  { value: "INTERNET", label: "🌐 Internet / Cable" },
-  { value: "APPLIANCE", label: "🍳 Appliance" },
-  { value: "STRUCTURAL", label: "🏗️ Structural" },
-  { value: "OTHER", label: "📋 Other" },
+  { value: "PLUMBING", label: "Plumbing" },
+  { value: "HVAC", label: "HVAC / Heating & Cooling" },
+  { value: "ELECTRICAL", label: "Electrical" },
+  { value: "INTERNET", label: "Internet / Cable" },
+  { value: "APPLIANCE", label: "Appliance" },
+  { value: "STRUCTURAL", label: "Structural" },
+  { value: "OTHER", label: "Other" },
 ];
 
 const PRIORITIES = [

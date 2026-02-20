@@ -38,13 +38,7 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function getCategoryIcon(cat: string) {
-  const icons: Record<string, string> = {
-    PLUMBING: "🔧", HVAC: "❄️", ELECTRICAL: "⚡",
-    INTERNET: "🌐", APPLIANCE: "🍳", STRUCTURAL: "🏗️", OTHER: "📋",
-  };
-  return icons[cat] ?? "📋";
-}
+
 
 export default function MyRequestsPage() {
   const { user } = useAuth();
@@ -72,10 +66,10 @@ export default function MyRequestsPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="flex flex-1 flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">My Maintenance Requests</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Maintenance Requests</h1>
           <p className="text-muted-foreground">{requests.length} request{requests.length !== 1 ? "s" : ""} submitted</p>
         </div>
         <Button asChild>
@@ -95,7 +89,7 @@ export default function MyRequestsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           {requests.map(req => {
             const status = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.OPEN;
             return (
@@ -103,7 +97,6 @@ export default function MyRequestsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">{getCategoryIcon(req.category)}</span>
                       <div>
                         <CardTitle className="text-base">
                           {req.category.charAt(0) + req.category.slice(1).toLowerCase()} Issue
