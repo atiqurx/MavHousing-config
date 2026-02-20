@@ -11,6 +11,7 @@ import { PrismaModule } from '@common/prisma/prisma.module';
 import { HousingModule } from './housing/housing.module';
 import { LeaseModule } from './lease/lease.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
     HousingModule,
     LeaseModule,
     MaintenanceModule,
+    PaymentModule,
   ],
   controllers: [InternalApiController],
   providers: [InternalApiService, InternalApiResolver],
