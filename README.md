@@ -1,72 +1,204 @@
 # MavHousing
 
 ## Overview
-Team: The Builders Squad
-A Monolithic application for MavHousing
+
+**Team:** The Builders Squad  
+A NestJS monorepo housing platform for UTA's MavHousing — managing student applications, leasing, maintenance requests, payments, and communications.
 
 ## Tech Stack
-- NestJS
-- NextJS
-- PostgreSQL
-- Resend
-- Twilio
-- Docker
-- TypeScript
 
-## Setup
+- **Backend Framework:** [NestJS](https://nestjs.com/) (TypeScript)
+- **Frontend:** [Next.js](https://nextjs.org/) _(planned)_
+- **Database:** [PostgreSQL](https://www.postgresql.org/) + [Prisma ORM](https://www.prisma.io/)
+- **Email:** [Resend](https://resend.com/)
+- **SMS:** [Twilio](https://www.twilio.com/)
+- **API Docs:** [Swagger](https://swagger.io/) (via `@nestjs/swagger`)
+- **Language:** TypeScript
 
-Clone the repository:
+---
+
+## Prerequisites
+
+Make sure you have the following installed before getting started:
+
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [npm](https://www.npmjs.com/) (v9+)
+- [PostgreSQL](https://www.postgresql.org/) (v14+)
+- [Git](https://git-scm.com/)
+
+---
+
+## Getting Started
+
+### 1. Clone the Repository
+
 ```bash
 git clone git@github.com:axjh03/MavHousing-config.git
+cd MavHousing-config
 ```
 
-Install dependencies:
+### 2. Install Dependencies
+
 ```bash
 npm install
 ```
 
-Run the application:
-The backend microservices are located in apps/:
-- auth-server
-- comms-server
-- internal-api
+### 3. Configure Environment Variables
 
+Copy the example env file and fill in your credentials:
 
 ```bash
-npm run start:dev <microservice> 
+cp .env.example .env
 ```
 
-Example:
-```bash
-npm run start:dev internal-api
-```
-You can just run `npm run start:dev internal-api` to run the all at once since the services are configured to run together.
+Your `.env` file should contain the following variables:
 
+| Variable            | Description                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `TWILIO_SID`        | Twilio Account SID                                                                         |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token                                                                          |
+| `TWILIO_PH_NUM`     | Twilio phone number (e.g. `+18551234567`)                                                  |
+| `RESEND_API`        | Resend API key for sending emails                                                          |
+| `SQL_DATABASE_URL`  | PostgreSQL connection string (e.g. `postgresql://user:password@localhost:5432/mavhousing`) |
 
-## (Temproary) Running with prisma and postgres
-Since in development phase, we are using prisma and postgres to manage the database and avoiding cloud db.
+### 4. Set Up the Database
 
-First install postgresql and then setup superuser.
+First, make sure PostgreSQL is running and you have created a database (e.g. `mavhousing`).
 
-Then generate and migrate:
+Generate the Prisma client and run migrations:
+
 ```bash
 npx prisma generate
-npx prisma migrate dev --name ANY_NAME
+npx prisma migrate dev --name init
 ```
 
-Run seed:
+Seed the database with mock data:
+
 ```bash
 npm run seed
 ```
-Now you should have mock data in your localdb instance.
 
-## RESETS database
-If you ever need to reset the database, you can use the following command:
+### 5. Run the Application
+
 ```bash
-npx prisma migrate reset
+npm run start:dev internal-api
 ```
 
-## View database
-```bash
-npx prisma studio
+> **Note:** Running `internal-api` will start all configured services together since they are wired in the monorepo.
+
+---
+
+## Project Structure
+
 ```
+mav-housing-config/
+├── apps/                        # Microservice applications
+│   ├── auth-server/             # Authentication & authorization (JWT, RBAC)
+│   ├── comms-server/            # Communications (Email via Resend, SMS via Twilio)
+│   ├── internal-api/            # Core API (Applications, Leases, Maintenance, Payments)
+│   └── mock/                    # Mock service for testing
+├── common/                      # Shared utilities & validators
+├── libs/                        # Shared libraries
+│   ├── auth/                    # Auth helpers
+│   ├── common/                  # Common utilities
+│   ├── config/                  # Configuration module
+│   ├── contracts/               # Shared interfaces & contracts
+│   ├── db/                      # Database module (Prisma service)
+│   ├── graphql/                 # GraphQL module
+│   └── messaging/               # Messaging module
+├── prisma/                      # Prisma schema, migrations, and seed script
+│   ├── schema.prisma            # Database schema
+│   ├── seed.ts                  # Seed script with mock data
+│   └── migrations/              # Database migrations
+├── docs/                        # Project documentation (architecture, requirements, roadmap)
+├── generated/                   # Auto-generated Prisma client
+├── .env.example                 # Environment variable template
+├── nest-cli.json                # NestJS monorepo configuration
+├── package.json                 # Dependencies & scripts
+└── tsconfig.json                # TypeScript configuration
+```
+
+---
+
+## Microservices
+
+| Service          | Port   | Swagger UI                                      | Description                                            |
+| ---------------- | ------ | ----------------------------------------------- | ------------------------------------------------------ |
+| **auth-server**  | `3004` | [localhost:3004/api](http://localhost:3004/api) | Authentication, JWT, user management, RBAC             |
+| **comms-server** | `3000` | [localhost:3000/api](http://localhost:3000/api) | Email (Resend) & SMS (Twilio) notifications            |
+| **internal-api** | `3009` | [localhost:3009/api](http://localhost:3009/api) | Core API — applications, leases, maintenance, payments |
+
+Run any individual service:
+
+```bash
+npm run start:dev <service-name>
+```
+
+Example:
+
+```bash
+npm run start:dev auth-server
+```
+
+---
+
+## Available Scripts
+
+| Script              | Command                       | Description                                |
+| ------------------- | ----------------------------- | ------------------------------------------ |
+| **Dev**             | `npm run start:dev <service>` | Start a service in watch mode              |
+| **Debug**           | `npm run start:debug`         | Start with debugger attached               |
+| **Build**           | `npm run build`               | Build the project                          |
+| **Production**      | `npm run start:prod`          | Run the production build                   |
+| **Lint**            | `npm run lint`                | Lint & auto-fix code                       |
+| **Format**          | `npm run format`              | Format code with Prettier                  |
+| **Test**            | `npm run test`                | Run unit tests                             |
+| **Test (Watch)**    | `npm run test:watch`          | Run tests in watch mode                    |
+| **Test (Coverage)** | `npm run test:cov`            | Run tests with coverage report             |
+| **Test (E2E)**      | `npm run test:e2e`            | Run end-to-end tests                       |
+| **Seed**            | `npm run seed`                | Generate Prisma client & seed the database |
+
+---
+
+## Database
+
+### Schema Overview
+
+The Prisma schema (`prisma/schema.prisma`) defines the following models:
+
+- **User** — Students, Staff, and Admins with role-based access
+- **Property** — Housing properties (Residence Halls, Apartments)
+- **Unit** → **Room** → **Bed** — Hierarchical housing structure
+- **Application** — Student housing applications with status tracking
+- **Lease** — Lease agreements supporting unit, room, or bed-level assignment
+- **Occupant** — Tracks lease holders, occupants, and roommates
+- **Payment** — Payment records tied to leases
+- **MaintenanceRequest** — Maintenance tickets with category, priority, and status
+
+### Useful Prisma Commands
+
+| Command                                | Description                                        |
+| -------------------------------------- | -------------------------------------------------- |
+| `npx prisma generate`                  | Regenerate the Prisma client                       |
+| `npx prisma migrate dev --name <name>` | Create & apply a new migration                     |
+| `npx prisma migrate reset`             | **Reset the database** (drops all data & re-seeds) |
+| `npx prisma studio`                    | Open Prisma Studio (visual DB browser)             |
+| `npx prisma db push`                   | Push schema changes without creating a migration   |
+
+---
+
+## API Documentation
+
+Each microservice exposes a **Swagger UI** at the `/api` endpoint:
+
+- **Auth Server:** [http://localhost:3004/api](http://localhost:3004/api)
+- **Comms Server:** [http://localhost:3000/api](http://localhost:3000/api)
+- **Internal API:** [http://localhost:3009/api](http://localhost:3009/api)
+
+The Swagger UI provides interactive API documentation where you can test endpoints directly.
+
+---
+
+## License
+
+This project is **UNLICENSED** — proprietary and for internal use only.
