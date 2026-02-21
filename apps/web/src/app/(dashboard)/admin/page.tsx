@@ -64,8 +64,8 @@ export default function AdminDashboard() {
       const [usersRes, appsRes, leasesRes, maintRes, paymentsRes] = await Promise.all([
         fetch("http://localhost:3007/users").then(r => r.json()).catch(() => []),
         fetch("http://localhost:3009/housing/applications").then(r => r.json()).catch(() => []),
-        fetch("http://localhost:3009/lease/all").then(r => r.json()).catch(() => []),
-        fetch("http://localhost:3009/maintenance/all").then(r => r.json()).catch(() => []),
+        fetch("http://localhost:3009/lease/leases").then(r => r.json()).catch(() => []),
+        fetch("http://localhost:3009/maintenance/requests").then(r => r.json()).catch(() => []),
         fetch("http://localhost:3009/payment/all").then(r => r.json()).catch(() => []),
       ]);
 
