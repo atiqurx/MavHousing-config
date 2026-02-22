@@ -15,7 +15,8 @@ npx prisma generate
 npm run seed
 
 
-
+# RESETS database
+npx prisma migrate reset
 
 ... FOR NEW Users
 First Install PostgreSQL

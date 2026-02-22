@@ -1,115 +1,204 @@
 # MavHousing
 
-A full-stack university housing management platform built for students, staff, and administrators. Handles the full lifecycle of student housing — from applications and lease management to maintenance requests and payments.
+## Overview
+
+**Team:** The Builders Squad  
+A NestJS monorepo housing platform for UTA's MavHousing — managing student applications, leasing, maintenance requests, payments, and communications.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 15, TypeScript, Shadcn UI, Tailwind CSS |
-| Backend | NestJS (monorepo with shared Prisma library) |
-| Database | PostgreSQL + Prisma ORM |
-| Auth | Custom JWT auth server with RBAC |
-| Communication | REST APIs between frontend and internal API |
+- **Backend Framework:** [NestJS](https://nestjs.com/) (TypeScript)
+- **Frontend:** [Next.js](https://nextjs.org/) _(planned)_
+- **Database:** [PostgreSQL](https://www.postgresql.org/) + [Prisma ORM](https://www.prisma.io/)
+- **Email:** [Resend](https://resend.com/)
+- **SMS:** [Twilio](https://www.twilio.com/)
+- **API Docs:** [Swagger](https://swagger.io/) (via `@nestjs/swagger`)
+- **Language:** TypeScript
 
-## Architecture
+---
 
-The project is a **Turborepo monorepo** with three independent services:
+## Prerequisites
 
-```
-apps/
-  web/              → Next.js frontend (port 3000)
-  auth-server/      → JWT authentication service (port 3004)
-  internal-api/     → Core business logic API (port 3009)
-packages/
-  common/
-    prisma/         → Shared Prisma client & schema
-```
+Make sure you have the following installed before getting started:
 
-The frontend communicates directly with both `auth-server` (for login) and `internal-api` (for all data). Authentication uses JWT tokens containing `userId`, `role`, `fName`, and `lName`.
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [npm](https://www.npmjs.com/) (v9+)
+- [PostgreSQL](https://www.postgresql.org/) (v14+)
+- [Git](https://git-scm.com/)
 
-## Features
-
-### 🎓 Student Portal (`/student`)
-- **Housing Application** — Multi-step wizard to apply for housing (room type, preferences, terms)
-- **My Applications** — Track application status (Pending → Approved/Rejected)
-- **My Lease** — View active lease details: property, unit/room/bed, lease period, and financial summary
-- **Maintenance** — Submit maintenance requests by category (Plumbing, HVAC, Electrical, etc.) and priority; track status
-- **Payments** — View balance summary, make simulated payments, and see full payment history
-- **Blaze AI Assistant** — Floating smart chatbot powered by Gemini that answers questions using the student's real-time housing context (lease info, balance, open tickets)
-
-### 🏢 Staff Portal (`/staff`)
-- **Applications** — Review all student applications, approve or reject with status updates
-- **Leases** — View and manage all active leases across properties; update lease statuses
-- **Maintenance** — Dashboard of all maintenance tickets with filters, staff assignment, and status management
-- **Payments** — View all tenant payment records with revenue stats and method filtering
-
-### 🔐 Admin Portal (`/admin`)
-- **User Management** — Full CRUD for user accounts (create, edit role, delete)
-
-## Database Models
-
-| Model | Description |
-|-------|-------------|
-| `User` | Students, staff, and admins with role-based access |
-| `Property` | Housing buildings (dorms, apartments) |
-| `Unit / Room / Bed` | Hierarchical space management |
-| `HousingApplication` | Student applications with status tracking |
-| `Lease` | Active lease agreements (by unit, room, or bed) |
-| `MaintenanceRequest` | Maintenance tickets with category, priority, status |
-| `Payment` | Payment records linked to leases |
+---
 
 ## Getting Started
 
-### Prerequisites
-- Node.js v18+
-- PostgreSQL running locally (database name: `mavhousing`)
+### 1. Clone the Repository
 
-### Install
+```bash
+git clone git@github.com:axjh03/MavHousing-config.git
+cd MavHousing-config
+```
+
+### 2. Install Dependencies
+
 ```bash
 npm install
 ```
 
-### Environment Setup
+### 3. Configure Environment Variables
 
-Create a `.env` file in the root of the project. The key variables required are:
-
-```env
-# Database Configuration
-# NOTE: Replace "postgres" with your local PostgreSQL username. 
-# On Mac (Homebrew/Postgres.app), this is usually your system username.
-SQL_DATABASE_URL="postgresql://postgres:password@localhost:5432/mavhousing"
-
-# Authentication
-JWT_SECRET="your-secret-key"
-
-# AI Integration (Required for Blaze Chatbot)
-GEMINI_API_KEY="your_gemini_api_key_here"
-```
-
-### Run
-
-Start all three services in separate terminals:
+Copy the example env file and fill in your credentials:
 
 ```bash
-# 1. Auth server (port 3007)
-npm run start:auth
-
-# 2. Internal API (port 3009)
-npm run start:internal
-
-# 3. Web frontend (port 3000)
-cd apps/web && npm run dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Your `.env` file should contain the following variables:
 
-> **API Docs**: Swagger available at [http://localhost:3009/api](http://localhost:3009/api)
+| Variable            | Description                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `TWILIO_SID`        | Twilio Account SID                                                                         |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token                                                                          |
+| `TWILIO_PH_NUM`     | Twilio phone number (e.g. `+18551234567`)                                                  |
+| `RESEND_API`        | Resend API key for sending emails                                                          |
+| `SQL_DATABASE_URL`  | PostgreSQL connection string (e.g. `postgresql://user:password@localhost:5432/mavhousing`) |
 
-## Test Accounts
+### 4. Set Up the Database
 
-| Role | NetID | Password |
-|------|-------|----------|
-| Student | `axr0966` | `BlueOrigin@26` |
-| Staff | `staffone` | `StaffPass@1` |
-| Admin | `adminone` | `AdminPass@1` |
+First, make sure PostgreSQL is running and you have created a database (e.g. `mavhousing`).
+
+Generate the Prisma client and run migrations:
+
+```bash
+npx prisma generate
+npx prisma migrate dev --name init
+```
+
+Seed the database with mock data:
+
+```bash
+npm run seed
+```
+
+### 5. Run the Application
+
+```bash
+npm run start:dev internal-api
+```
+
+> **Note:** Running `internal-api` will start all configured services together since they are wired in the monorepo.
+
+---
+
+## Project Structure
+
+```
+mav-housing-config/
+├── apps/                        # Microservice applications
+│   ├── auth-server/             # Authentication & authorization (JWT, RBAC)
+│   ├── comms-server/            # Communications (Email via Resend, SMS via Twilio)
+│   ├── internal-api/            # Core API (Applications, Leases, Maintenance, Payments)
+│   └── mock/                    # Mock service for testing
+├── common/                      # Shared utilities & validators
+├── libs/                        # Shared libraries
+│   ├── auth/                    # Auth helpers
+│   ├── common/                  # Common utilities
+│   ├── config/                  # Configuration module
+│   ├── contracts/               # Shared interfaces & contracts
+│   ├── db/                      # Database module (Prisma service)
+│   ├── graphql/                 # GraphQL module
+│   └── messaging/               # Messaging module
+├── prisma/                      # Prisma schema, migrations, and seed script
+│   ├── schema.prisma            # Database schema
+│   ├── seed.ts                  # Seed script with mock data
+│   └── migrations/              # Database migrations
+├── docs/                        # Project documentation (architecture, requirements, roadmap)
+├── generated/                   # Auto-generated Prisma client
+├── .env.example                 # Environment variable template
+├── nest-cli.json                # NestJS monorepo configuration
+├── package.json                 # Dependencies & scripts
+└── tsconfig.json                # TypeScript configuration
+```
+
+---
+
+## Microservices
+
+| Service          | Port   | Swagger UI                                      | Description                                            |
+| ---------------- | ------ | ----------------------------------------------- | ------------------------------------------------------ |
+| **auth-server**  | `3004` | [localhost:3004/api](http://localhost:3004/api) | Authentication, JWT, user management, RBAC             |
+| **comms-server** | `3000` | [localhost:3000/api](http://localhost:3000/api) | Email (Resend) & SMS (Twilio) notifications            |
+| **internal-api** | `3009` | [localhost:3009/api](http://localhost:3009/api) | Core API — applications, leases, maintenance, payments |
+
+Run any individual service:
+
+```bash
+npm run start:dev <service-name>
+```
+
+Example:
+
+```bash
+npm run start:dev auth-server
+```
+
+---
+
+## Available Scripts
+
+| Script              | Command                       | Description                                |
+| ------------------- | ----------------------------- | ------------------------------------------ |
+| **Dev**             | `npm run start:dev <service>` | Start a service in watch mode              |
+| **Debug**           | `npm run start:debug`         | Start with debugger attached               |
+| **Build**           | `npm run build`               | Build the project                          |
+| **Production**      | `npm run start:prod`          | Run the production build                   |
+| **Lint**            | `npm run lint`                | Lint & auto-fix code                       |
+| **Format**          | `npm run format`              | Format code with Prettier                  |
+| **Test**            | `npm run test`                | Run unit tests                             |
+| **Test (Watch)**    | `npm run test:watch`          | Run tests in watch mode                    |
+| **Test (Coverage)** | `npm run test:cov`            | Run tests with coverage report             |
+| **Test (E2E)**      | `npm run test:e2e`            | Run end-to-end tests                       |
+| **Seed**            | `npm run seed`                | Generate Prisma client & seed the database |
+
+---
+
+## Database
+
+### Schema Overview
+
+The Prisma schema (`prisma/schema.prisma`) defines the following models:
+
+- **User** — Students, Staff, and Admins with role-based access
+- **Property** — Housing properties (Residence Halls, Apartments)
+- **Unit** → **Room** → **Bed** — Hierarchical housing structure
+- **Application** — Student housing applications with status tracking
+- **Lease** — Lease agreements supporting unit, room, or bed-level assignment
+- **Occupant** — Tracks lease holders, occupants, and roommates
+- **Payment** — Payment records tied to leases
+- **MaintenanceRequest** — Maintenance tickets with category, priority, and status
+
+### Useful Prisma Commands
+
+| Command                                | Description                                        |
+| -------------------------------------- | -------------------------------------------------- |
+| `npx prisma generate`                  | Regenerate the Prisma client                       |
+| `npx prisma migrate dev --name <name>` | Create & apply a new migration                     |
+| `npx prisma migrate reset`             | **Reset the database** (drops all data & re-seeds) |
+| `npx prisma studio`                    | Open Prisma Studio (visual DB browser)             |
+| `npx prisma db push`                   | Push schema changes without creating a migration   |
+
+---
+
+## API Documentation
+
+Each microservice exposes a **Swagger UI** at the `/api` endpoint:
+
+- **Auth Server:** [http://localhost:3004/api](http://localhost:3004/api)
+- **Comms Server:** [http://localhost:3000/api](http://localhost:3000/api)
+- **Internal API:** [http://localhost:3009/api](http://localhost:3009/api)
+
+The Swagger UI provides interactive API documentation where you can test endpoints directly.
+
+---
+
+## License
+
+This project is **UNLICENSED** — proprietary and for internal use only.

@@ -22,7 +22,27 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@common/*": ["common/*"]
+      "@libs/db": [
+        "libs/db/src"
+      ],
+      "@libs/db/*": [
+        "libs/db/src/*"
+      ],
+      "@libs/common": [
+        "libs/common/src"
+      ],
+      "@libs/common/*": [
+        "libs/common/src/*"
+      ],
+      "@mav-housing/prisma": [
+        "generated/prisma"
+      ],
+      "@mav-housing/prisma/*": [
+        "generated/prisma/*"
+      ],
+      "@common/*": [
+        "common/*"
+      ]
     }
   }
 }
